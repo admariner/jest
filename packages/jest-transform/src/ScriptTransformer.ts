@@ -194,7 +194,8 @@ class ScriptTransformer {
     filename: Config.Path,
     cacheKey: string,
   ): Config.Path {
-    const baseCacheDir = HasteMap.getCacheFilePath(
+    const HasteMapClass = HasteMap.getStatic(this._config);
+    const baseCacheDir = HasteMapClass.getCacheFilePath(
       this._config.cacheDirectory,
       'jest-transform-cache-' + this._config.name,
       VERSION,
@@ -772,18 +773,18 @@ class ScriptTransformer {
         },
       },
     );
-    const module: ModuleType = await requireOrImportModule(
-      moduleName,
-      applyInteropRequireDefault,
-    );
-
-    if (!callback) {
-      revertHook();
-
-      return module;
-    }
-
     try {
+      const module: ModuleType = await requireOrImportModule(
+        moduleName,
+        applyInteropRequireDefault,
+      );
+
+      if (!callback) {
+        revertHook();
+
+        return module;
+      }
+
       const cbResult = callback(module);
 
       if (isPromise(cbResult)) {
@@ -791,11 +792,11 @@ class ScriptTransformer {
           () => module,
         );
       }
+
+      return module;
     } finally {
       revertHook();
     }
-
-    return module;
   }
 
   shouldTransform(filename: Config.Path): boolean {
@@ -821,18 +822,19 @@ export async function createTranspilingRequire(
     resolverPath: string,
     applyInteropRequireDefault: boolean = false,
   ) {
-    const transpiledModule = await transformer.requireAndTranspileModule<TModuleType>(
-      resolverPath,
-      () => {},
-      {
-        applyInteropRequireDefault,
-        instrument: false,
-        supportsDynamicImport: false, // this might be true, depending on node version.
-        supportsExportNamespaceFrom: false,
-        supportsStaticESM: false,
-        supportsTopLevelAwait: false,
-      },
-    );
+    const transpiledModule =
+      await transformer.requireAndTranspileModule<TModuleType>(
+        resolverPath,
+        () => {},
+        {
+          applyInteropRequireDefault,
+          instrument: false,
+          supportsDynamicImport: false, // this might be true, depending on node version.
+          supportsExportNamespaceFrom: false,
+          supportsStaticESM: false,
+          supportsTopLevelAwait: false,
+        },
+      );
 
     return transpiledModule;
   };
